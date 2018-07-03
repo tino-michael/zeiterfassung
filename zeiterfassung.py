@@ -70,7 +70,10 @@ def main(db=None):
         sys.exit()
 
     db_file = args.db_path + os.sep + args.user + "_Zeiterfassung.yml"
-    db = db or yaml.load(open(db_file), Loader=Loader) or {}
+    try:
+        db = db or yaml.load(open(db_file), Loader=Loader)
+    except FileNotFoundError:
+        db = {}
 
     now = datetime.datetime.now()
 
@@ -81,7 +84,7 @@ def main(db=None):
     day = args.day or day
     week = datetime.date(year, month, day).isocalendar()[1]
 
-    hours, minutes = (int(t) for t in now.time().__str__().split(':')[:-1])
+    hours, minutes = (int(t) for t in str(now.time()).split(':')[:-1])
     minutes = minutes - minutes % 15  # rounding minutes to last quarter
     round_down = datetime.datetime(year, month, day, hours, minutes, 00)
     round_up = datetime.datetime(year, month, day, hours, minutes, 00) + \
@@ -106,9 +109,9 @@ def main(db=None):
 
     # populate the desired day with the given information
     if args.start is not False:
-        this_day["start"] = args.start or str(round_down.time())
+        this_day["start"] = args.start or format_time(round_down.time())
     if args.end is not False:
-        this_day["end"] = args.end or str(round_up.time())
+        this_day["end"] = args.end or format_time(round_up.time())
     if args.comment is not None:
         if not args.comment:
             try:
@@ -143,11 +146,11 @@ def main(db=None):
                         # so, go on with the single-part approach
                         day_balance += calc_balance(day)
 
-                    day["Tagessaldo"] = format_timedelta(day_balance)
+                    day["Tagessaldo"] = format_time(format_timedelta(day_balance))
                     week_balance += day_balance
-                week["Wochensaldo"] = format_timedelta(week_balance)
+                week["Wochensaldo"] = format_time(format_timedelta(week_balance))
                 month_balance += week_balance
-            month["Monatssaldo"] = format_timedelta(month_balance)
+            month["Monatssaldo"] = format_time(format_timedelta(month_balance))
 
     print(f"erfasste Zeiten fuer {args.user}:")
     print(yaml.dump(db))
@@ -172,6 +175,10 @@ def clean_db(db):
         clean_db(db)
 
 
+def format_time(t):
+    return ':'.join(str(t).split(':')[:-1])
+
+
 def format_timedelta(td):
     if td < datetime.timedelta(0):
         return '-' + format_timedelta(-td)
@@ -183,8 +190,8 @@ def calc_balance(day):
     start = day["start"]
     end = day["end"]
     pause = day["pause"]
-    return (datetime.datetime.strptime(end, '%H:%M:%S') -
-            datetime.datetime.strptime(start, '%H:%M:%S') -
+    return (datetime.datetime.strptime(end, '%H:%M') -
+            datetime.datetime.strptime(start, '%H:%M') -
             datetime.timedelta(minutes=pause))
 
 
