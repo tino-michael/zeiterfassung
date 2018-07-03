@@ -9,7 +9,6 @@ setup(
     description='tool to keep track of your working hours',
     author='Tino Michael',
     author_email='tino.michael.87@gamil.com',
-    # packages=['tinos_steam_helper'],
     scripts=['zeiterfassung.py'],
     install_requires=['pyyaml', 'pandas']
 )
