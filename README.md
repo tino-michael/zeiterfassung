@@ -13,19 +13,21 @@ It calculates over-time saldos on a daily, weekly and monthly basis
 Dependencies are minimal
 
 ### necessary
-(py)yaml
+- python
+- (py)yaml
 
 ### optional
-whatever I pick to write out excel
+- setuptools (to install)
+- whatever I pick to write out excel
 (probably pandas and its excel deps)
 
-## Usage
 
+## Usage
 Usage is simple, run the script with a user name and a db_path (default is current path).  
 If you just started working, run the `--start` flag without options, when you leave,
 run the script again with `--end`. The script with use the current time -- rounded to
 quarter hours -- for the time tracking. If you want to use another time, give it to the
-flag in form of `HH:MM:SS`.  
+flag in form of `HH:MM`.  
 If you want to change the date use either `--date YYYY-MM-DD` or any combination of
 `--year YYYY`, `--month MM`, `--day DD`.  
 You can add a comment, change the length of your break or even declare the current entry
@@ -57,7 +59,7 @@ definiert den Arbeitstag
 ### Example yml file
 To see the yaml data structure, have a look at this output of recorded pseudo-times.
 Keep in mind the hierarchy of  
-`year -> month -> week -> day -> part-day`
+`year -> month -> week -> day [-> part-day]`
 ```
 erfasste Zeiten für TinoMichael:
 2018:
@@ -71,3 +73,15 @@ erfasste Zeiten für TinoMichael:
       Wochensaldo: '-7:24:00'
     Monatssaldo: '-7:24:00'
 ```
+
+
+## TODO
+
+`Urlaub` and `Zeitausgleich` options?  
+For now, these workarounds should work:
+- Urlaub: set `start` and `end` to the same time (e.g. 0:00) and `pause` to be equal to
+`work_time`, add a comment `"Urlaub"`
+- Zeitausgleich: set `start` and `end` to the same time (e.g. 0:00) and `pause` to 0,
+add a comment `"Zeitausgleich"`
+
+(If I'll implement some command line flags, they would just automatise these steps.)
