@@ -65,10 +65,6 @@ def main(db=None):
 
     args.work_hours, args.work_minutes = (int(t) for t in args.work_time.split(':'))
 
-    if args.start is None and args.end is None:
-        print("bitte nicht 'jetzt' fuer Arbeitsanfang und -ende benutzen")
-        sys.exit()
-
     db_file = args.db_path + os.sep + args.user + "_Zeiterfassung.yml"
     try:
         db = db or yaml.load(open(db_file), Loader=Loader)
@@ -91,12 +87,24 @@ def main(db=None):
         datetime.timedelta(minutes=15)
 
     # get the desired day and create its data base entry if not there yet
+    # iteratively creates nested dicts up to the desired depth
     while True:
         try:
             if args.multi_day:
                 this_day = db[year][month][week][day][args.multi_day]
+
+                # if current day was previously a one-block day, reset the relevant
+                # entries (they will be removed later by `clean_db`)
+                for a in ["start", "end", "pause"]:
+                    db[year][month][week][day][a] = {}
             else:
                 this_day = db[year][month][week][day]
+
+                # if `this_day` was previously declared multi-day,
+                # reset the multi-day fields (they will be removed later by `clean_db`)
+                for a, b in this_day.items():
+                    if type(b) == dict:
+                        this_day[a] = {}
             break
         except KeyError:
             db_temp = db
@@ -112,6 +120,8 @@ def main(db=None):
         this_day["start"] = args.start or format_time(round_down.time())
     if args.end is not False:
         this_day["end"] = args.end or format_time(round_up.time())
+    this_day["pause"] = args.pause
+
     if args.comment is not None:
         if not args.comment:
             try:
@@ -121,10 +131,10 @@ def main(db=None):
         else:
             this_day["comment"] = " ".join(args.comment)
 
-    this_day["pause"] = args.pause
-
     # recursively remove empty dictionary leaves
     clean_db(db)
+    # sort database by date
+    db = sort_db(db)
 
     # calculate over-time on a daily, weekly and monthly basis
     for year in db.values():
@@ -153,7 +163,7 @@ def main(db=None):
             month["Monatssaldo"] = format_time(format_timedelta(month_balance))
 
     print(f"erfasste Zeiten fuer {args.user}:")
-    print(yaml.dump(db))
+    print(yaml.dump(db, default_flow_style=False))
 
     for ending in args.export:
         if ending in ["yml", "yaml"]:
@@ -175,6 +185,23 @@ def clean_db(db):
         clean_db(db)
 
 
+def sort_db(old_db):
+    '''sorts the DB numerically by year -> month -> week -> day
+    this assumes all the saldo entries have been removed by `clean_db` just before
+    preserves the order of strings, i.e. "start" - "end" - "pause", and multi-day tokens
+    '''
+    new_db = {}
+    for k in sorted(str(l) for l in old_db):
+        try:
+            k = int(k)
+            new_db[k] = sort_db(old_db[k])
+        except ValueError:
+            # if `k` is a string that cannot be converted to integer, we hit the maximum
+            # depth; return the original, unsorted dict
+            return old_db
+    return new_db
+
+
 def format_time(t):
     return ':'.join(str(t).split(':')[:-1])
 
@@ -187,12 +214,19 @@ def format_timedelta(td):
 
 
 def calc_balance(day):
-    start = day["start"]
-    end = day["end"]
-    pause = day["pause"]
-    return (datetime.datetime.strptime(end, '%H:%M') -
-            datetime.datetime.strptime(start, '%H:%M') -
-            datetime.timedelta(minutes=pause))
+    try:
+        start = day["start"]
+        end = day["end"]
+        try:
+            pause = day["pause"]
+        except KeyError:
+            pause = 0
+        return (datetime.datetime.strptime(end, '%H:%M') -
+                datetime.datetime.strptime(start, '%H:%M') -
+                datetime.timedelta(minutes=pause))
+    except KeyError:
+        print("Achtung: Anfangs- oder Endzeit scheinen zu fehlen!")
+        return datetime.timedelta()
 
 
 def export_excel(db, db_path):
