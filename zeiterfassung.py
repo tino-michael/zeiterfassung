@@ -88,8 +88,7 @@ def main(db=None):
 
     if args.date is False and args.day is False and args.month is False and \
             args.year is False and args.start is False and args.end is False:
-        print(f"erfasste Zeiten fuer {args.user}:")
-        print(db_file)
+        print(f"erfasste Zeiten fuer {args.user}:\n", db_file)
         print(yaml.dump(db, default_flow_style=args.expand))
         sys.exit()
 
@@ -149,8 +148,7 @@ def main(db=None):
     # calculate over-time saldos on a daily, weekly and monthly basis
     calculate_saldos(db)
 
-    print(f"erfasste Zeiten fuer {args.user}:")
-    print(db_file)
+    print(f"erfasste Zeiten fuer {args.user}:\n", db_file)
     print(yaml.dump(db, default_flow_style=args.expand))
 
     for ending in args.export:
