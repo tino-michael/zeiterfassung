@@ -218,14 +218,26 @@ def calculate_saldos(db, work_time="7:42"):
 
     work_hours, work_minutes = (int(t) for t in work_time.split(':'))
 
-    for year in db.values():
-        for month in year.values():
+    for y, year in db.items():
+        for m, month in year.items():
             month_balance = datetime.timedelta()
-            for week in month.values():
+            for w, week in month.items():
                 week_balance = datetime.timedelta()
-                for day in week.values():
-                    day_balance = -datetime.timedelta(hours=work_hours,
-                                                      minutes=work_minutes)
+                for d, day in week.items():
+                    # check if we are on a working day
+                    # TODO check for legal holidays?
+                    if datetime.datetime(y, m, d).weekday() < 5:
+                        day_balance = -datetime.timedelta(hours=work_hours,
+                                                          minutes=work_minutes)
+                    else:
+                        # we are on a weekend day; make this clear in the comment
+                        # and set the expected work time to zero
+                        day_balance = datetime.timedelta()
+                        if "comment" in day:
+                            if "Wochenende" not in day["comment"]:
+                                day["comment"] = "Wochenende " + day["comment"]
+                        else:
+                            day["comment"] = "Wochenende"
                     try:
                         # assume this is a multi-part day
                         for part in day.values():
