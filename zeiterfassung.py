@@ -80,11 +80,18 @@ def main(db=None):
     if args.zeitausgleich:
         args.comment[0:0] = ["Zeitausgleich;"]
 
-    db_file = args.db_path + os.sep + args.user + "_Zeiterfassung.yml"
+    db_file = args.db_path + args.user + "_Zeiterfassung.yml"
     try:
         db = db or yaml.load(open(db_file), Loader=Loader) or {}
     except FileNotFoundError:
         db = {}
+
+    if args.date is False and args.day is False and args.month is False and \
+            args.year is False and args.start is False and args.end is False:
+        print(f"erfasste Zeiten fuer {args.user}:")
+        print(db_file)
+        print(yaml.dump(db, default_flow_style=args.expand))
+        sys.exit()
 
     now = datetime.datetime.now()
 
@@ -143,6 +150,7 @@ def main(db=None):
     calculate_saldos(db)
 
     print(f"erfasste Zeiten fuer {args.user}:")
+    print(db_file)
     print(yaml.dump(db, default_flow_style=args.expand))
 
     for ending in args.export:
