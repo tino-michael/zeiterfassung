@@ -33,6 +33,9 @@ If you want to change the date, use either `--date YYYY-MM-DD` or any combinatio
 You can add a comment, change the length of your break or even declare the current entry
 a sub-day (and then go on and add more sub-days).
 
+You can declare vacation or Zeitausgleich with the `--urlaub` and `--zeitausgleich`
+flags, respectively.
+
 You can delete a day by setting neither `--start` nor `--end`.
 
 ### Command Line Options
@@ -56,6 +59,11 @@ definiert den Arbeitstag
 --pause PAUSE            Pausenzeit in Minuten
 --comment COMMENT        optionaler Kommentar zum Eintrag
 --multi_day MULTI_DAY    ermöglicht mehrere Einträge pro Tag
+
+Out of Office Flaggen:
+-u, --urlaub             deklariert den Tag als Urlaubstag:
+                         keine Arbeit erwartet, kein Saldo verbraucht
+-z, --zeitausgleich      keine Arbeitszeit, Saldo wird um regulaere Zeit veringert
 ```
 
 
@@ -79,12 +87,4 @@ erfasste Zeiten für TinoMichael:
 
 
 ## TODO
-
-`Urlaub` and `Zeitausgleich` options?  
-For now, these workarounds should work:
-- Urlaub: set `start` and `end` to the same time (e.g. 0:00) and `pause` to be equal to
-negative `work_time` (remember: in minutes), add a comment `"Urlaub"`
-- Zeitausgleich: set `start` and `end` to the same time (e.g. 0:00) and `pause` to 0,
-add a comment `"Zeitausgleich"`
-
-(If I'll implement some command line flags, they would just automatise these steps.)
+- export to excel

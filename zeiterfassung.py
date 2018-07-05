@@ -65,7 +65,20 @@ def main(db=None):
                         help="expandiert die anderweitig kompakte Ausgabe der erfassten"
                              " Zeiten")
 
+    out_of_office_group = parser.add_argument_group(description="Out of Office Flaggen:")
+    out_of_office_group.add_argument('-u', '--urlaub', action='store_true', default=None,
+                                     help="deklariert den Tag als Urlaubstag:\n"
+                                          "keine Arbeit erwartet, kein Saldo verbraucht")
+    out_of_office_group.add_argument('-z', '--zeitausgleich', action='store_true',
+                                     default=None, help="keine Arbeitszeit, Saldo wird "
+                                     "um regulaere Zeit veringert")
+
     args = parser.parse_args()
+
+    if args.urlaub:
+        args.comment[0:0] = ["Urlaub;"]
+    if args.zeitausgleich:
+        args.comment[0:0] = ["Zeitausgleich;"]
 
     db_file = args.db_path + os.sep + args.user + "_Zeiterfassung.yml"
     try:
@@ -92,7 +105,7 @@ def main(db=None):
     this_day = get_day_from_db(db, year, month, week, day, args.multi_day)
 
     # populate the desired day with the given information
-    if args.start is False and args.end is False:
+    if args.start is False and args.end is False and not args.comment:
         # if neither `start` nor `end` are set, remove day
         this_day.update(dict((k, {}) for k in this_day))
     else:
@@ -107,9 +120,11 @@ def main(db=None):
             this_day["start"] = args.start or format_time(round_down.time())
         if args.end is not False:
             this_day["end"] = args.end or format_time(round_up.time())
-        this_day["pause"] = args.pause
+        if not (args.urlaub or args.zeitausgleich):
+            this_day["pause"] = args.pause
 
         if args.comment is not None:
+            # if `comment` flag is set but argument empty, try to remove present comment
             if not args.comment:
                 try:
                     del this_day["comment"]
@@ -220,6 +235,12 @@ def calculate_saldos(db, work_time="7:42"):
                         # if not, `part["start"]` should throw a `TypeError`
                         # -> "string indices must be integers"
                         # so, go on with the single-part approach
+                        try:
+                            if "urlaub" in day["comment"].lower():
+                                day_balance = datetime.timedelta()
+                        except KeyError:
+                            pass
+
                         day_balance += calc_balance(day)
 
                     day["Tagessaldo"] = format_time(format_timedelta(day_balance))
