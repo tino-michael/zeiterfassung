@@ -61,13 +61,15 @@ def main(db=None):
                         help="schreibt erfasste Zeiten in gegebenen Formaten;\n"
                              "unterstuetzt: [yml, xls]")
 
-    args = parser.parse_args()
+    parser.add_argument('--expand', action='store_false', default=None,
+                        help="expandiert die anderweitig kompakte Ausgabe der erfassten"
+                             " Zeiten")
 
-    args.work_hours, args.work_minutes = (int(t) for t in args.work_time.split(':'))
+    args = parser.parse_args()
 
     db_file = args.db_path + os.sep + args.user + "_Zeiterfassung.yml"
     try:
-        db = db or yaml.load(open(db_file), Loader=Loader)
+        db = db or yaml.load(open(db_file), Loader=Loader) or {}
     except FileNotFoundError:
         db = {}
 
@@ -87,11 +89,63 @@ def main(db=None):
         datetime.timedelta(minutes=15)
 
     # get the desired day and create its data base entry if not there yet
+    this_day = get_day_from_db(db, year, month, week, day, args.multi_day)
+
+    # populate the desired day with the given information
+    if args.start is False and args.end is False:
+        # if neither `start` nor `end` are set, remove day
+        this_day.update(dict((k, {}) for k in this_day))
+    else:
+        # The logic for `start` (and `end`) is as follows:
+        # - By default, `start` is `False`, so if it doesn't show up in the list of CL
+        #   arguments, the if-statement does not Trigger
+        # - If `start` is used in the CL and followed by a time stamp, use that time
+        #   as starting time
+        # - If `start` is used in the CL but without any parameter, `args.start` will be
+        #   `None` and the or-statement will use the current time
+        if args.start is not False:
+            this_day["start"] = args.start or format_time(round_down.time())
+        if args.end is not False:
+            this_day["end"] = args.end or format_time(round_up.time())
+        this_day["pause"] = args.pause
+
+        if args.comment is not None:
+            if not args.comment:
+                try:
+                    del this_day["comment"]
+                except KeyError:
+                    pass
+            else:
+                this_day["comment"] = " ".join(args.comment)
+
+    # recursively remove empty dictionary leaves
+    clean_db(db)
+
+    # sort database by date
+    db = sort_db(db)
+
+    # calculate over-time saldos on a daily, weekly and monthly basis
+    calculate_saldos(db)
+
+    print(f"erfasste Zeiten fuer {args.user}:")
+    print(yaml.dump(db, default_flow_style=args.expand))
+
+    for ending in args.export:
+        if ending in ["yml", "yaml"]:
+            yaml.dump(db, open(db_file, mode="w"), Dumper=Dumper)
+        if ending in ["xls", "xlsx", "excel"]:
+            export_excel(db, args.db_path)
+
+    return db
+
+
+def get_day_from_db(db, year, month, week, day, multi_day=False):
+    # get the desired day and create its data base entry if not there yet
     # iteratively creates nested dicts up to the desired depth
     while True:
         try:
-            if args.multi_day:
-                this_day = db[year][month][week][day][args.multi_day]
+            if multi_day:
+                this_day = db[year][month][week][day][multi_day]
 
                 # if current day was previously a one-block day, reset the relevant
                 # entries (they will be removed later by `clean_db`)
@@ -105,73 +159,16 @@ def main(db=None):
                 for a, b in this_day.items():
                     if type(b) == dict:
                         this_day[a] = {}
-            break
+            return this_day
+
         except KeyError:
             db_temp = db
             try:
-                for k in [year, month, week, day, args.multi_day]:
+                for k in [year, month, week, day, multi_day]:
                     if k:
                         db_temp = db_temp[k]
             except KeyError:
                 db_temp[k] = {}
-
-    # populate the desired day with the given information
-    if args.start is not False:
-        this_day["start"] = args.start or format_time(round_down.time())
-    if args.end is not False:
-        this_day["end"] = args.end or format_time(round_up.time())
-    this_day["pause"] = args.pause
-
-    if args.comment is not None:
-        if not args.comment:
-            try:
-                del this_day["comment"]
-            except KeyError:
-                pass
-        else:
-            this_day["comment"] = " ".join(args.comment)
-
-    # recursively remove empty dictionary leaves
-    clean_db(db)
-    # sort database by date
-    db = sort_db(db)
-
-    # calculate over-time on a daily, weekly and monthly basis
-    for year in db.values():
-        for month in year.values():
-            month_balance = datetime.timedelta()
-            for week in month.values():
-                week_balance = datetime.timedelta()
-                for day in week.values():
-                    day_balance = -datetime.timedelta(hours=args.work_hours,
-                                                      minutes=args.work_minutes)
-                    try:
-                        # assume this is a multi-part day
-                        for part in day.values():
-                            day_balance += calc_balance(part)
-
-                    except TypeError:
-                        # if not, `part["start"]` should throw a `TypeError`
-                        # -> "string indices must be integers"
-                        # so, go on with the single-part approach
-                        day_balance += calc_balance(day)
-
-                    day["Tagessaldo"] = format_time(format_timedelta(day_balance))
-                    week_balance += day_balance
-                week["Wochensaldo"] = format_time(format_timedelta(week_balance))
-                month_balance += week_balance
-            month["Monatssaldo"] = format_time(format_timedelta(month_balance))
-
-    print(f"erfasste Zeiten fuer {args.user}:")
-    print(yaml.dump(db, default_flow_style=False))
-
-    for ending in args.export:
-        if ending in ["yml", "yaml"]:
-            yaml.dump(db, open(db_file, mode="w"), Dumper=Dumper)
-        if ending in ["xls", "xlsx", "excel"]:
-            export_excel(db, args.db_path)
-
-    return db
 
 
 def clean_db(db):
@@ -190,16 +187,46 @@ def sort_db(old_db):
     this assumes all the saldo entries have been removed by `clean_db` just before
     preserves the order of strings, i.e. "start" - "end" - "pause", and multi-day tokens
     '''
-    new_db = {}
-    for k in sorted(str(l) for l in old_db):
-        try:
-            k = int(k)
+    try:
+        new_db = {}
+        for k in sorted(int(l) for l in old_db):
             new_db[k] = sort_db(old_db[k])
-        except ValueError:
-            # if `k` is a string that cannot be converted to integer, we hit the maximum
-            # depth; return the original, unsorted dict
-            return old_db
-    return new_db
+        return new_db
+    except ValueError:
+        # if `l` is a string that cannot be converted to integer, we hit the maximum
+        # depth; return the original, not resorted dict
+        return old_db
+
+
+def calculate_saldos(db, work_time="7:42"):
+    # calculate over-time saldos on a daily, weekly and monthly basis
+
+    work_hours, work_minutes = (int(t) for t in work_time.split(':'))
+
+    for year in db.values():
+        for month in year.values():
+            month_balance = datetime.timedelta()
+            for week in month.values():
+                week_balance = datetime.timedelta()
+                for day in week.values():
+                    day_balance = -datetime.timedelta(hours=work_hours,
+                                                      minutes=work_minutes)
+                    try:
+                        # assume this is a multi-part day
+                        for part in day.values():
+                            day_balance += calc_balance(part)
+
+                    except TypeError:
+                        # if not, `part["start"]` should throw a `TypeError`
+                        # -> "string indices must be integers"
+                        # so, go on with the single-part approach
+                        day_balance += calc_balance(day)
+
+                    day["Tagessaldo"] = format_time(format_timedelta(day_balance))
+                    week_balance += day_balance
+                week["Wochensaldo"] = format_time(format_timedelta(week_balance))
+                month_balance += week_balance
+            month["Monatssaldo"] = format_time(format_timedelta(month_balance))
 
 
 def format_time(t):
@@ -231,7 +258,7 @@ def calc_balance(day):
 
 def export_excel(db, db_path):
     # TODO implement
-    pass
+    print("export to excel not yet implemented")
 
 
 if __name__ == "__main__":

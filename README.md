@@ -28,10 +28,12 @@ If you just started working, run the `--start` flag without options, when you le
 run the script again with `--end`. The script with use the current time -- rounded to
 quarter hours -- for the time tracking. If you want to use another time, give it to the
 flag in form of `HH:MM`.  
-If you want to change the date use either `--date YYYY-MM-DD` or any combination of
+If you want to change the date, use either `--date YYYY-MM-DD` or any combination of
 `--year YYYY`, `--month MM`, `--day DD`.  
 You can add a comment, change the length of your break or even declare the current entry
 a sub-day (and then go on and add more sub-days).
+
+You can delete a day by setting neither `--start` nor `--end`.
 
 ### Command Line Options
 ```
@@ -40,6 +42,7 @@ a sub-day (and then go on and add more sub-days).
 --user USER              zu bearbeitender Mitarbeiter
 --export [EXPORT]        schreibt erfasste Zeiten in gegebenen Formaten;
                          unterstützt: [yml, xls]
+--expand                 expandiert die anderweitig kompakte Ausgabe der erfassten Zeiten
 
 bestimmt den zu bearbeitenden Tag; falls nichts gesetzt, nutze heute:
 --date DATE              zu bearbeitender Tag im ISO Format (z.B. 1970-12-31)
@@ -80,7 +83,7 @@ erfasste Zeiten für TinoMichael:
 `Urlaub` and `Zeitausgleich` options?  
 For now, these workarounds should work:
 - Urlaub: set `start` and `end` to the same time (e.g. 0:00) and `pause` to be equal to
-`work_time`, add a comment `"Urlaub"`
+negative `work_time` (remember: in minutes), add a comment `"Urlaub"`
 - Zeitausgleich: set `start` and `end` to the same time (e.g. 0:00) and `pause` to 0,
 add a comment `"Zeitausgleich"`
 
