@@ -86,6 +86,9 @@ def main(db=None):
     except FileNotFoundError:
         db = {}
 
+    # if neither of these tokens is set, only show db and exit,
+    # otherwise the current day would get removed later on
+    # TODO should this go into a `--remove` flag instead?
     if args.date is False and args.day is False and args.month is False and \
             args.year is False and args.start is False and args.end is False:
         print(f"erfasste Zeiten fuer {args.user}:\n", db_file)
@@ -205,8 +208,12 @@ def clean_db(db):
 
 def sort_db(old_db):
     '''sorts the DB numerically by year -> month -> week -> day
-    this assumes all the saldo entries have been removed by `clean_db` just before
-    preserves the order of strings, i.e. "start" - "end" - "pause", and multi-day tokens
+    this assumes all the saldo entries have been removed by `clean_db` just before;
+    otherwise, this will break
+
+    preserves the order of strings, i.e. "start" - "end" - "pause", and multi-day tokens,
+    it's your responsibility to sort them properly (you can always move them around in
+    the .yml file later)
     '''
     try:
         new_db = {}
