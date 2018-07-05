@@ -36,7 +36,7 @@ a sub-day (and then go on and add more sub-days).
 You can declare vacation or Zeitausgleich with the `--urlaub` and `--zeitausgleich`
 flags, respectively.
 
-You can delete a day by setting neither `--start` nor `--end`.
+You can delete a day with `--remove`.
 
 ### Command Line Options
 ```

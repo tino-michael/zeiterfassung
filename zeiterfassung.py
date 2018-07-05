@@ -61,6 +61,8 @@ def main(db=None):
                         help="schreibt erfasste Zeiten in gegebenen Formaten;\n"
                              "unterstuetzt: [yml, xls]")
 
+    parser.add_argument('--remove', action='store_true', default=False,
+                        help="entfernt den momentanen Tag aus der DB")
     parser.add_argument('--expand', action='store_false', default=None,
                         help="expandiert die anderweitig kompakte Ausgabe der erfassten"
                              " Zeiten")
@@ -72,7 +74,6 @@ def main(db=None):
     out_of_office_group.add_argument('-z', '--zeitausgleich', action='store_true',
                                      default=None, help="keine Arbeitszeit, Saldo wird "
                                      "um regulaere Zeit veringert")
-
     args = parser.parse_args()
 
     if args.urlaub:
@@ -85,15 +86,6 @@ def main(db=None):
         db = db or yaml.load(open(db_file), Loader=Loader) or {}
     except FileNotFoundError:
         db = {}
-
-    # if neither of these tokens is set, only show db and exit,
-    # otherwise the current day would get removed later on
-    # TODO should this go into a `--remove` flag instead?
-    if args.date is False and args.day is False and args.month is False and \
-            args.year is False and args.start is False and args.end is False:
-        print(f"erfasste Zeiten fuer {args.user}:\n", db_file)
-        print(yaml.dump(db, default_flow_style=args.expand))
-        sys.exit()
 
     now = datetime.datetime.now()
 
@@ -114,9 +106,12 @@ def main(db=None):
     this_day = get_day_from_db(db, year, month, week, day, args.multi_day)
 
     # populate the desired day with the given information
-    if args.start is False and args.end is False and not args.comment:
-        # if neither `start` nor `end` are set, remove day
+    if args.remove:
         this_day.update(dict((k, {}) for k in this_day))
+    elif args.date is False and args.day is False and args.month is False and \
+            args.year is False and args.start is False and args.end is False:
+        # if neither of these is set, don't change the current day
+        pass
     else:
         # The logic for `start` (and `end`) is as follows:
         # - By default, `start` is `False`, so if it doesn't show up in the list of CL
@@ -151,7 +146,7 @@ def main(db=None):
     # calculate over-time saldos on a daily, weekly and monthly basis
     calculate_saldos(db)
 
-    print(f"erfasste Zeiten fuer {args.user}:\n", db_file)
+    print(f"\nerfasste Zeiten fuer {args.user}:\n", db_file)
     print(yaml.dump(db, default_flow_style=args.expand))
 
     for ending in args.export:
