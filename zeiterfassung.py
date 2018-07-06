@@ -67,7 +67,8 @@ def main(db=None):
                         help="expandiert die anderweitig kompakte Ausgabe der erfassten"
                              " Zeiten")
 
-    out_of_office_group = parser.add_argument_group(description="Out of Office Flaggen:")
+    out_of_office_group = parser.add_mutually_exclusive_group(
+        description="Out of Office Flaggen:")
     out_of_office_group.add_argument('-u', '--urlaub', action='store_true', default=None,
                                      help="deklariert den Tag als Urlaubstag:\n"
                                           "keine Arbeit erwartet, kein Saldo verbraucht")
@@ -78,7 +79,7 @@ def main(db=None):
 
     if args.urlaub:
         args.comment[0:0] = ["Urlaub;"]
-    if args.zeitausgleich:
+    elif args.zeitausgleich:
         args.comment[0:0] = ["Zeitausgleich;"]
 
     db_file = args.db_path + args.user + "_Zeiterfassung.yml"
