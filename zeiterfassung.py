@@ -67,8 +67,7 @@ def main(db=None):
                         help="expandiert die anderweitig kompakte Ausgabe der erfassten"
                              " Zeiten")
 
-    out_of_office_group = parser.add_mutually_exclusive_group(
-        description="Out of Office Flaggen:")
+    out_of_office_group = parser.add_mutually_exclusive_group()
     out_of_office_group.add_argument('-u', '--urlaub', action='store_true', default=None,
                                      help="deklariert den Tag als Urlaubstag:\n"
                                           "keine Arbeit erwartet, kein Saldo verbraucht")
@@ -196,7 +195,7 @@ def clean_db(db):
         for k, v in db.items():
             if isinstance(v, dict):
                 clean_db(v)
-            if v == {} or "saldo" in str(k):
+            if v == {} or "saldo" in str(k) or "Arbeit" in str(k):
                 del db[k]
     except RuntimeError:
         clean_db(db)
@@ -233,22 +232,9 @@ def calculate_saldos(db, work_time="7:42"):
             for w, week in month.items():
                 week_balance = datetime.timedelta()
                 for d, day in week.items():
-                    # check if we are on a working day
-                    # TODO check for legal holidays?
-                    if datetime.datetime(y, m, d).weekday() < 5:
-                        day_balance = -datetime.timedelta(hours=work_hours,
-                                                          minutes=work_minutes)
-                    else:
-                        # we are on a weekend day; make this clear in the comment
-                        # and set the expected work time to zero
-                        day_balance = datetime.timedelta()
-                        if "comment" in day:
-                            if "Wochenende" not in day["comment"]:
-                                day["comment"] = "Wochenende " + day["comment"]
-                        else:
-                            day["comment"] = "Wochenende"
                     try:
                         # assume this is a multi-part day
+                        day_balance = datetime.timedelta()
                         for part in day.values():
                             day_balance += calc_balance(part)
 
@@ -262,7 +248,24 @@ def calculate_saldos(db, work_time="7:42"):
                         except KeyError:
                             pass
 
-                        day_balance += calc_balance(day)
+                        day_balance = calc_balance(day)
+
+                    day["Arbeitszeit"] = format_time(format_timedelta(day_balance))
+
+                    # check if we are on a working day
+                    # TODO check for legal holidays?
+                    if datetime.datetime(y, m, d).weekday() < 5:
+                        day_balance -= datetime.timedelta(hours=work_hours,
+                                                          minutes=work_minutes)
+                    else:
+                        # we are on a weekend day; make this clear in the comment
+                        # and set the expected work time to zero
+                        day_balance = datetime.timedelta()
+                        if "comment" in day:
+                            if "Wochenende" not in day["comment"]:
+                                day["comment"] = "Wochenende " + day["comment"]
+                        else:
+                            day["comment"] = "Wochenende"
 
                     day["Tagessaldo"] = format_time(format_timedelta(day_balance))
                     week_balance += day_balance
