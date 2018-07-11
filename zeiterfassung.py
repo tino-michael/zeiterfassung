@@ -48,7 +48,7 @@ def main(db=None):
                            help="optionaler Kommentar zum Eintrag")
 
     day_group.add_argument('--multi_day', type=str, default=False,
-                           help="ermoeglicht mehrere Eintraege pro Tag")
+                           help="ermöglicht mehrere Einträge pro Tag")
 
     parser.add_argument('-w', '--work_time', type=str, default='7:42',
                         help="Arbeitspensum pro Tag; Format H:MM")
@@ -59,7 +59,7 @@ def main(db=None):
                         help="zu bearbeitender Mitarbeiter")
     parser.add_argument('--export', nargs='*', default=["yml"],
                         help="schreibt erfasste Zeiten in gegebenen Formaten;\n"
-                             "unterstuetzt: [yml, xls]")
+                             "unterstützt: [yml, xls]")
 
     parser.add_argument('--remove', action='store_true', default=False,
                         help="entfernt den momentanen Tag aus der DB")
@@ -73,7 +73,7 @@ def main(db=None):
                                           "keine Arbeit erwartet, kein Saldo verbraucht")
     out_of_office_group.add_argument('-z', '--zeitausgleich', action='store_true',
                                      default=None, help="keine Arbeitszeit, Saldo wird "
-                                     "um regulaere Zeit veringert")
+                                     "um reguläre Zeit veringert")
     args = parser.parse_args()
 
     if args.urlaub:
@@ -146,7 +146,7 @@ def main(db=None):
     # calculate over-time saldos on a daily, weekly and monthly basis
     calculate_saldos(db)
 
-    print(f"\nerfasste Zeiten fuer {args.user}:\n", db_file)
+    print(f"\nerfasste Zeiten für {args.user}:\n", db_file)
     print(yaml.dump(db, default_flow_style=args.expand))
 
     for ending in args.export:
