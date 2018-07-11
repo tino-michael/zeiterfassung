@@ -227,6 +227,7 @@ def calculate_saldos(db, work_time="7:42"):
     work_hours, work_minutes = (int(t) for t in work_time.split(':'))
 
     for y, year in db.items():
+        year_balance = datetime.timedelta()
         for m, month in year.items():
             month_balance = datetime.timedelta()
             for w, week in month.items():
@@ -269,9 +270,20 @@ def calculate_saldos(db, work_time="7:42"):
 
                     day["Tagessaldo"] = format_time(format_timedelta(day_balance))
                     week_balance += day_balance
+
+                    # if there is a comment, move it to the back of the day-dict
+                    try:
+                        comm = day["comment"]
+                        del day["comment"]
+                        day["comment"] = comm
+                    except KeyError:
+                        pass
+
                 week["Wochensaldo"] = format_time(format_timedelta(week_balance))
                 month_balance += week_balance
             month["Monatssaldo"] = format_time(format_timedelta(month_balance))
+            year_balance += month_balance
+        year["Jahressaldo"] = format_time(format_timedelta(year_balance))
 
 
 def format_time(t):
