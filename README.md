@@ -73,16 +73,21 @@ Keep in mind the hierarchy of
 `year -> month -> week -> day [-> part-day]`
 ```
 erfasste Zeiten für TinoMichael:
+ /tmp/TinoMichael_Zeiterfassung.yml
 2018:
   5:
     18:
-      3: {Tagessaldo: '-2:42:00', end: '14:00:00', pause: 0, start: '9:00:00'}
-      6:
-        Tagessaldo: '-4:42:00'
-        a: {end: '10:00:00', pause: 0, start: '9:00:00'}
-        b: {end: '14:00:00', pause: 0, start: '12:00:00'}
-      Wochensaldo: '-7:24:00'
-    Monatssaldo: '-7:24:00'
+      3: {start: '9:00', end: '14:00', pause: 0, Arbeitszeit: '5:00', Tagessaldo: '-2:42'}
+      Wochensaldo: '-2:42'
+    19:
+      7:
+        a: {start: '9:00', end: '10:00', pause: 0, comment: pre-noon}
+        b: {start: '13:00', end: '16:00', pause: 0, comment: post-noon}
+        Arbeitszeit: '4:00'
+        Tagessaldo: '-3:42'
+      Wochensaldo: '-3:42'
+    Monatssaldo: '-6:24'
+  Jahressaldo: '-6:24'
 ```
 
 
