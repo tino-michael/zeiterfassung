@@ -139,8 +139,8 @@ def main(db=None):
 
         # ensure proper order of the start, end, pause tokens
         for key in ["start", "end", "pause", "comment"]:
-            # Note: comment does get pushed at the end later anyway but do it here, too,
-            # for clarity
+            # Note: `comment` does get pushed to the end later anyway but do it here
+            # aswell for clarity
             try:
                 temp = this_day[key]
                 del this_day[key]

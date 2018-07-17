@@ -63,7 +63,7 @@ definiert den Arbeitstag
 Out of Office Flaggen:
 -u, --urlaub             deklariert den Tag als Urlaubstag:
                          keine Arbeit erwartet, kein Saldo verbraucht
--z, --zeitausgleich      keine Arbeitszeit, Saldo wird um regulaere Zeit veringert
+-z, --zeitausgleich      keine Arbeitszeit, Saldo wird um reguläre Zeit veringert
 ```
 
 
