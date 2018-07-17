@@ -44,7 +44,7 @@ def main(db=None):
     day_group.add_argument('-p', '--pause', type=int, default='30',
                            help="Pausenzeit in Minuten")
 
-    day_group.add_argument('-c', '--comment', type=str, nargs='*', default=[],
+    day_group.add_argument('-c', '--comment', type=str, nargs='*', default=None,
                            help="optionaler Kommentar zum Eintrag")
 
     day_group.add_argument('--multi_day', type=str, default=False,
@@ -129,13 +129,24 @@ def main(db=None):
 
         if args.comment is not None:
             # if `comment` flag is set but argument empty, try to remove present comment
-            if not args.comment:
+            if args.comment:
+                this_day["comment"] = " ".join(args.comment)
+            else:
                 try:
                     del this_day["comment"]
                 except KeyError:
                     pass
-            else:
-                this_day["comment"] = " ".join(args.comment)
+
+        # ensure proper order of the start, end, pause tokens
+        for key in ["start", "end", "pause", "comment"]:
+            # Note: comment does get pushed at the end later anyway but do it here, too,
+            # for clarity
+            try:
+                temp = this_day[key]
+                del this_day[key]
+                this_day[key] = temp
+            except KeyError:
+                pass
 
     # recursively remove empty dictionary leaves
     clean_db(db)
