@@ -77,9 +77,15 @@ def main(db=None):
     args = parser.parse_args()
 
     if args.urlaub:
-        args.comment[0:0] = ["Urlaub;"]
+        try:
+            args.comment[0:0] = ["Urlaub;"]
+        except TypeError:
+            args.comment = ["Urlaub"]
     elif args.zeitausgleich:
-        args.comment[0:0] = ["Zeitausgleich;"]
+        try:
+            args.comment[0:0] = ["Zeitausgleich;"]
+        except TypeError:
+            args.comment = ["Zeitausgleich"]
 
     db_file = args.db_path + args.user + "_Zeiterfassung.yml"
     try:
@@ -155,7 +161,7 @@ def main(db=None):
     db = sort_db(db)
 
     # calculate over-time saldos on a daily, weekly and monthly basis
-    calculate_saldos(db)
+    calculate_saldos(db, work_time=args.work_time)
 
     print(f"\nerfasste Zeiten für {args.user}:\n", db_file)
     print(yaml.dump(db, default_flow_style=args.expand))
@@ -254,12 +260,6 @@ def calculate_saldos(db, work_time="7:42"):
                         # if not, `part["start"]` should throw a `TypeError`
                         # -> "string indices must be integers"
                         # so, go on with the single-part approach
-                        try:
-                            if "urlaub" in day["comment"].lower():
-                                day_balance = datetime.timedelta()
-                        except KeyError:
-                            pass
-
                         day_balance = calc_balance(day)
 
                     day["Arbeitszeit"] = format_time(format_timedelta(day_balance))
@@ -267,15 +267,16 @@ def calculate_saldos(db, work_time="7:42"):
                     # check if we are on a working day
                     # TODO check for legal holidays?
                     if datetime.datetime(y, m, d).weekday() < 5:
-                        day_balance -= datetime.timedelta(hours=work_hours,
-                                                          minutes=work_minutes)
+                        if "comment" not in day or "urlaub" not in day["comment"].lower():
+                            day_balance -= datetime.timedelta(hours=work_hours,
+                                                              minutes=work_minutes)
                     else:
                         # we are on a weekend day; make this clear in the comment
                         # and set the expected work time to zero
                         day_balance = datetime.timedelta()
                         if "comment" in day:
                             if "Wochenende" not in day["comment"]:
-                                day["comment"] = "Wochenende " + day["comment"]
+                                day["comment"] = "Wochenende; " + day["comment"]
                         else:
                             day["comment"] = "Wochenende"
 
