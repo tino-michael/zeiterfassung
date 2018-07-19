@@ -262,7 +262,7 @@ def calculate_saldos(db, work_time="7:42"):
                         # so, go on with the single-part approach
                         day_balance = calc_balance(day)
 
-                    day["Arbeitszeit"] = format_time(format_timedelta(day_balance))
+                    day["Arbeitszeit"] = format_timedelta(day_balance)
 
                     # check if we are on a working day
                     # TODO check for legal holidays?
@@ -280,7 +280,7 @@ def calculate_saldos(db, work_time="7:42"):
                         else:
                             day["comment"] = "Wochenende"
 
-                    day["Tagessaldo"] = format_time(format_timedelta(day_balance))
+                    day["Tagessaldo"] = format_timedelta(day_balance)
                     week_balance += day_balance
 
                     # if there is a comment, move it to the back of the day-dict
@@ -291,22 +291,22 @@ def calculate_saldos(db, work_time="7:42"):
                     except KeyError:
                         pass
 
-                week["Wochensaldo"] = format_time(format_timedelta(week_balance))
+                week["Wochensaldo"] = format_timedelta(week_balance)
                 month_balance += week_balance
-            month["Monatssaldo"] = format_time(format_timedelta(month_balance))
+            month["Monatssaldo"] = format_timedelta(month_balance)
             year_balance += month_balance
-        year["Jahressaldo"] = format_time(format_timedelta(year_balance))
+        year["Jahressaldo"] = format_timedelta(year_balance)
 
 
 def format_time(t):
-    return ':'.join(str(t).split(':')[:-1])
+    return t[:-3]
 
 
 def format_timedelta(td):
     if td < datetime.timedelta(0):
         return '-' + format_timedelta(-td)
     else:
-        return str(td)
+        return format_time(str(td))
 
 
 def calc_balance(day):
