@@ -57,7 +57,7 @@ def main(db=None):
                         help="Ort, an dem die In- und Output Files liegen")
     parser.add_argument('--user', type=str, default="TinoMichael",
                         help="zu bearbeitender Mitarbeiter")
-    parser.add_argument('--export', nargs='*', default=["yml"],
+    parser.add_argument('--export', nargs='*', default=[],
                         help="schreibt erfasste Zeiten in gegebenen Formaten;\n"
                              "unterstützt: [yml, xls]")
 
@@ -165,12 +165,17 @@ def main(db=None):
 
     print(f"\nerfasste Zeiten für {args.user}:\n", db_file)
     print(yaml.dump(db, default_flow_style=args.expand))
+    yaml.dump(db, open(db_file, mode="w"), Dumper=Dumper)
 
     for ending in args.export:
+        export_file = args.db_path + args.user + \
+            f"_{year}_{month:02}_Zeiterfassung.{{}}"
         if ending in ["yml", "yaml"]:
-            yaml.dump(db, open(db_file, mode="w"), Dumper=Dumper)
+            yaml.dump(db[year][month],
+                      open(export_file.format("yml"), mode="w"),
+                      Dumper=Dumper)
         if ending in ["xls", "xlsx", "excel"]:
-            export_excel(db, args.db_path)
+            export_excel(db, export_file.format("xlsx"))
 
     return db
 
