@@ -151,6 +151,24 @@ def test_zeitausgleich():
     assert day["Tagessaldo"] == "-8:00"
 
 
+def test_wochenend():
+    sys.argv[1:] = [
+        "--db_path", "/tmp/",
+        "--date", "2018-07-21",
+        "--user", "test_zeitausgleich",
+        "--work_time", "8:00",
+        "--start", "9:00",
+        "--end", "18:00",
+        "--pause", "0",
+        "--export", ""
+    ]
+
+    db = main(db={})
+    day = db[2018][7][29][21]
+    assert day["Arbeitszeit"] == day["Tagessaldo"]
+    assert "wochenende" in day["comment"].lower()
+
+
 def test_work_time():
     sys.argv[1:] = [
         "--db_path", "/tmp/",

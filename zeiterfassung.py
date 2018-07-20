@@ -278,7 +278,7 @@ def calculate_saldos(db, work_time="7:42"):
                     else:
                         # we are on a weekend day; make this clear in the comment
                         # and set the expected work time to zero
-                        day_balance = datetime.timedelta()
+                        day_balance = calc_balance(day)
                         if "comment" in day:
                             if "Wochenende" not in day["comment"]:
                                 day["comment"] = "Wochenende; " + day["comment"]
