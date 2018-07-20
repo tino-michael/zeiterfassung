@@ -304,14 +304,14 @@ def calculate_saldos(db, work_time="7:42"):
 
 
 def format_time(t):
-    return t[:-3]
+    return str(t)[:-3]
 
 
 def format_timedelta(td):
     if td < datetime.timedelta(0):
         return '-' + format_timedelta(-td)
     else:
-        return format_time(str(td))
+        return format_time(td)
 
 
 def calc_balance(day):
