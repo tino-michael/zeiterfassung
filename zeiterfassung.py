@@ -185,16 +185,16 @@ def get_day_from_db(db, year, month, week, day, multi_day=False):
     # iteratively creates nested dicts up to the desired depth
     while True:
         try:
-            if multi_day:
-                this_day = db[year][month][week][day][multi_day]
+            this_day = db[year][month][week][day]
 
+            if multi_day:
                 # if current day was previously a one-block day, reset the relevant
                 # entries (they will be removed later by `clean_db`)
                 for a in ["start", "end", "pause"]:
-                    db[year][month][week][day][a] = {}
-            else:
-                this_day = db[year][month][week][day]
+                    this_day[a] = {}
+                this_day = this_day[multi_day]
 
+            else:
                 # if `this_day` was previously declared multi-day,
                 # reset the multi-day fields (they will be removed later by `clean_db`)
                 for a, b in this_day.items():
