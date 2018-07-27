@@ -63,6 +63,9 @@ def main(db=None):
 
     parser.add_argument('--remove', action='store_true', default=False,
                         help="entfernt den momentanen Tag aus der DB")
+    parser.add_argument('-v', '--verbose', action='store_true', default=False,
+                        help="prints the all stored days for the user instead of only"
+                             " current month")
     parser.add_argument('--expand', action='store_false', default=None,
                         help="expandiert die anderweitig kompakte Ausgabe der erfassten"
                              " Zeiten")
@@ -164,18 +167,19 @@ def main(db=None):
     calculate_saldos(db, work_time=args.work_time)
 
     print(f"\nerfasste Zeiten für {args.user}:\n", db_file)
-    print(yaml.dump(db, default_flow_style=args.expand))
+    print(yaml.dump(db if args.verbose else db[year][month],
+                    default_flow_style=args.expand))
     yaml.dump(db, open(db_file, mode="w"), Dumper=Dumper)
 
     for ending in args.export:
-        export_file = args.db_path + args.user + \
-            f"_{year}_{month:02}_Zeiterfassung.{{}}"
+        export_file_name = args.db_path + args.user + \
+            f"_Zeiterfassung_{year}_{month:02}.{{}}"
         if ending in ["yml", "yaml"]:
             yaml.dump(db[year][month],
-                      open(export_file.format("yml"), mode="w"),
+                      open(export_file_name.format("yml"), mode="w"),
                       Dumper=Dumper)
         if ending in ["xls", "xlsx", "excel"]:
-            export_excel(db, export_file.format("xlsx"))
+            export_excel(db, year, month, export_file_name.format("xlsx"))
 
     return db
 
@@ -330,9 +334,87 @@ def calc_balance(day):
         return datetime.timedelta()
 
 
-def export_excel(db, db_path):
-    # TODO implement
-    print("export to excel not yet implemented")
+def export_excel(db, year, month, file_name):
+    try:
+        from pandas import DataFrame
+        from calendar import month_name
+    except ImportError:
+        return None
+
+    date_col = []
+    start_col = []
+    end_col = []
+    break_col = []
+    h_incl_break_col = []
+    Tagesstunden_col = []
+    week_hours_col = []
+    week_diff_col = []
+    month_diff_col = []
+    comment_col = []
+
+    for w, week in db[year][month].items():
+        week_hours = datetime.timedelta(0)
+        if w == "Monatssaldo":
+            continue
+        for d, day in week.items():
+            if d == "Wochensaldo":
+                continue
+
+            hours, minutes = day["Arbeitszeit"].split(':')
+            day_hours = datetime.timedelta(hours=int(hours), minutes=int(minutes))
+            week_hours += day_hours
+
+            try:  # single-entry day
+                start_col.append(day["start"])
+                end_col.append(day["end"])
+                break_col.append(day["pause"])
+                date_col.append(datetime.date(year, month, d).isoformat())
+
+                h_incl_break_col.append(format_timedelta(day_hours +
+                                        datetime.timedelta(minutes=day["pause"])))
+                Tagesstunden_col.append("")
+                try:
+                    comment_col.append(day["comment"])
+                except KeyError:
+                    comment_col.append("")
+            except (TypeError, KeyError):  # multi-day entry
+                for t, token in day.items():
+                    if "Tagessaldo" == t or "Arbeitszeit" == t:
+                        continue
+                    date_col.append(datetime.date(year, month, d).isoformat())
+                    start_col.append(token["start"])
+                    end_col.append(token["end"])
+                    break_col.append(token["pause"])
+                    h_incl_break_col.append("")
+                    Tagesstunden_col.append("")
+                    try:
+                        comment_col.append(": ".join([t, token["comment"]]))
+                    except KeyError:
+                        comment_col.append("")
+
+            Tagesstunden_col[-1] = day["Arbeitszeit"]
+            week_hours_col.append("")
+            week_diff_col.append("")
+            month_diff_col.append("")
+
+        s = week_hours.total_seconds()
+        hours, remainder = divmod(s, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        week_hours_col[-1] = f"{int(hours)}:{int(minutes):02d}"
+        week_diff_col[-1] = week["Wochensaldo"]
+
+    df = DataFrame({'Datum': date_col + [""],
+                    'Beginn': start_col + [""],
+                    'Ende': end_col + [""],
+                    'Pause': break_col + [""],
+                    'h inkl. Pause': h_incl_break_col + [""],
+                    'Tagesstunden': Tagesstunden_col + [""],
+                    'Wochenstunden': week_hours_col + [""],
+                    'Wochensaldo': week_diff_col + [""],
+                    'Monatssaldo': month_diff_col + [db[year][month]["Monatssaldo"]],
+                    'Kommentar': comment_col + [month_name[month]]})
+
+    df.to_excel(file_name, sheet_name='Tabelle1', index=False)
 
 
 if __name__ == "__main__":
