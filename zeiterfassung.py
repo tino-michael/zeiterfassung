@@ -98,7 +98,7 @@ def main(db=None):
 
     now = datetime.datetime.now()
 
-    date = args.date or now.date().__str__()
+    date = args.date or str(now.date())
     year, month, day = (int(t) for t in date.split('-'))
     year = args.year or year
     month = args.month or month
@@ -112,50 +112,14 @@ def main(db=None):
         datetime.timedelta(minutes=15)
 
     # get the desired day and create its data base entry if not there yet
-    this_day = get_day_from_db(db, year, month, week, day, args.multi_day)
+    this_day = get_day_from_db(db, year, month, week, day)
 
-    # populate the desired day with the given information
     if args.remove:
+        if args.multi_day:
+            this_day = this_day[args.multi_day]
         this_day.update(dict((k, {}) for k in this_day))
-    elif args.date is False and args.day is False and args.month is False and \
-            args.year is False and args.start is False and args.end is False:
-        # if neither of these is set, don't change the current day
-        pass
-    else:
-        # The logic for `start` (and `end`) is as follows:
-        # - By default, `start` is `False`, so if it doesn't show up in the list of CL
-        #   arguments, the if-statement does not Trigger
-        # - If `start` is used in the CL and followed by a time stamp, use that time
-        #   as starting time
-        # - If `start` is used in the CL but without any parameter, `args.start` will be
-        #   `None` and the or-statement will use the current time
-        if args.start is not False:
-            this_day["start"] = args.start or format_time(round_down.time())
-        if args.end is not False:
-            this_day["end"] = args.end or format_time(round_up.time())
-        if not (args.urlaub or args.zeitausgleich):
-            this_day["pause"] = args.pause
-
-        if args.comment is not None:
-            # if `comment` flag is set but argument empty, try to remove present comment
-            if args.comment:
-                this_day["comment"] = " ".join(args.comment)
-            else:
-                try:
-                    del this_day["comment"]
-                except KeyError:
-                    pass
-
-        # ensure proper order of the start, end, pause tokens
-        for key in ["start", "end", "pause", "comment"]:
-            # Note: `comment` does get pushed to the end later anyway but do it here
-            # aswell for clarity
-            try:
-                temp = this_day[key]
-                del this_day[key]
-                this_day[key] = temp
-            except KeyError:
-                pass
+    elif not (args.start is False and args.end is False and args.comment is False):
+        this_day = update_day(this_day, args, round_up, round_down)
 
     # recursively remove empty dictionary leaves
     clean_db(db)
@@ -184,36 +148,73 @@ def main(db=None):
     return db
 
 
-def get_day_from_db(db, year, month, week, day, multi_day=False):
+def get_day_from_db(db, year, month, week, day):
     # get the desired day and create its data base entry if not there yet
     # iteratively creates nested dicts up to the desired depth
     while True:
         try:
-            this_day = db[year][month][week][day]
-
-            if multi_day:
-                # if current day was previously a one-block day, reset the relevant
-                # entries (they will be removed later by `clean_db`)
-                for a in ["start", "end", "pause"]:
-                    this_day[a] = {}
-                this_day = this_day[multi_day]
-
-            else:
-                # if `this_day` was previously declared multi-day,
-                # reset the multi-day fields (they will be removed later by `clean_db`)
-                for a, b in this_day.items():
-                    if type(b) == dict:
-                        this_day[a] = {}
-            return this_day
-
+            return db[year][month][week][day]
         except KeyError:
             db_temp = db
             try:
-                for k in [year, month, week, day, multi_day]:
+                for k in [year, month, week, day]:
                     if k:
                         db_temp = db_temp[k]
             except KeyError:
                 db_temp[k] = {}
+
+
+def update_day(this_day, args, round_up, round_down):
+    if args.multi_day:
+        # if current day was previously a one-block day, reset the relevant
+        # entries (they will be removed later by `clean_db`)
+        # Also set the entry node for the multi-day
+        for a in ["start", "end", "pause", "comment", args.multi_day]:
+            this_day[a] = {}
+        this_day = this_day[args.multi_day]
+
+    else:
+        # if `this_day` was previously declared multi-day,
+        # reset the multi-day fields (they will be removed later by `clean_db`)
+        for a, b in this_day.items():
+            if type(b) == dict:
+                this_day[a] = {}
+
+    # populate the desired day with the given information
+    # The logic for `start` (and `end`) is as follows:
+    # - By default, `start` is `False`, so if it doesn't show up in the list of CL
+    #   arguments, the if-statement does not Trigger
+    # - If `start` is used in the CL and followed by a time stamp, use that time
+    #   as starting time
+    # - If `start` is used in the CL but without any parameter, `args.start` will
+    #   be `None` and the or-statement will use the current time
+    if args.start is not False:
+        this_day["start"] = args.start or format_time(round_down.time())
+    if args.end is not False:
+        this_day["end"] = args.end or format_time(round_up.time())
+    if not (args.urlaub or args.zeitausgleich):
+        this_day["pause"] = args.pause
+
+    if args.comment is not None:
+        # if `comment` flag is set but argument empty, try to remove present comment
+        if args.comment:
+            this_day["comment"] = " ".join(args.comment)
+        else:
+            try:
+                del this_day["comment"]
+            except KeyError:
+                pass
+
+    # ensure proper order of the start, end, pause tokens
+    for key in ["start", "end", "pause", "comment"]:
+        # Note: `comment` does get pushed to the end later anyway but do it here
+        # aswell for clarity
+        try:
+            temp = this_day[key]
+            del this_day[key]
+            this_day[key] = temp
+        except KeyError:
+            pass
 
 
 def clean_db(db):
@@ -330,7 +331,6 @@ def calc_balance(day):
                 datetime.datetime.strptime(start, '%H:%M') -
                 datetime.timedelta(minutes=pause))
     except KeyError:
-        print("Achtung: Anfangs- oder Endzeit scheinen zu fehlen!")
         return datetime.timedelta()
 
 
