@@ -118,7 +118,7 @@ def main(db=None):
         if args.multi_day:
             this_day = this_day[args.multi_day]
         this_day.update(dict((k, {}) for k in this_day))
-    elif not (args.start is False and args.end is False and args.comment is False):
+    elif not (args.start is False and args.end is False and args.comment is None):
         this_day = update_day(this_day, args, round_up, round_down)
 
     # recursively remove empty dictionary leaves
@@ -131,7 +131,10 @@ def main(db=None):
     calculate_saldos(db, work_time=args.work_time)
 
     print(f"\nerfasste Zeiten für {args.user}:\n", db_file)
-    print(yaml.dump(db if args.verbose else db[year][month],
+    print(yaml.dump(db if args.verbose else
+                    {round_down.strftime("%B"): (db[year][month] if
+                     (year in db and month in db[year]) else
+                     "no entries for this month")},
                     default_flow_style=args.expand))
     yaml.dump(db, open(db_file, mode="w"), Dumper=Dumper)
 
